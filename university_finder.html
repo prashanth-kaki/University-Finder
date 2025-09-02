@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>University Finder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border-left-color: #09f;
+      animation: spin 1s ease infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+  <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-2">University Finder</h1>
+      <p class="text-lg text-gray-600">Explore universities from around the world.</p>
+    </header>
+
+    <!-- Search -->
+    <div class="mb-8 p-6 bg-white rounded-xl shadow-md">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <input type="text" id="countryInput" placeholder="Enter a country name (e.g., India)" 
+               class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+        <button id="searchButton" 
+                class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 shadow">
+          Search
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <main id="resultsContainer">
+      <div id="loader" class="hidden flex justify-center items-center py-12">
+        <div class="spinner"></div>
+      </div>
+      <div id="message" class="text-center text-gray-500 py-12">
+        <p>Type a country and click search to begin.</p>
+      </div>
+      <div id="universitiesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+  </div>
+
+  <script>
+    const countryInput = document.getElementById('countryInput');
+    const searchButton = document.getElementById('searchButton');
+    const loader = document.getElementById('loader');
+    const message = document.getElementById('message');
+    const universitiesGrid = document.getElementById('universitiesGrid');
+
+    const API_URL = 'http://universities.hipolabs.com/search?country=';
+
+    searchButton.addEventListener('click', fetchUniversities);
+    countryInput.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') fetchUniversities();
+    });
+
+    async function fetchUniversities() {
+      const country = countryInput.value.trim();
+      if (!country) {
+        displayMessage('Please enter a country name.');
+        return;
+      }
+
+      resetUI();
+      loader.classList.remove('hidden');
+      searchButton.disabled = true;
+      searchButton.textContent = 'Searching...';
+      searchButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+      try {
+        const response = await fetch(`${API_URL}${encodeURIComponent(country.toLowerCase())}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+
+        if (data.length === 0) {
+          displayMessage(`No universities found for "${country}". Please check the spelling.`);
+        } else {
+          displayUniversities(data);
+        }
+
+      } catch (error) {
+        console.error("Fetch error:", error);
+        displayMessage('Failed to fetch data. Please check your connection or try again later.');
+      } finally {
+        loader.classList.add('hidden');
+        searchButton.disabled = false;
+        searchButton.textContent = 'Search';
+        searchButton.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function displayUniversities(universities) {
+      universitiesGrid.innerHTML = '';
+      universities.forEach(uni => {
+        const uniCard = document.createElement('div');
+        uniCard.className = 'bg-white p-6 rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col';
+
+        const websites = uni.web_pages.length
+          ? uni.web_pages.map(url =>
+              `<a href="${url}" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group mb-2">
+                 Visit Website →
+               </a>`).join('')
+          : `<p class="text-gray-400">No website listed</p>`;
+
+        const location = `${uni.country}${uni["state-province"] ? `, ${uni["state-province"]}` : ""}`;
+
+        uniCard.innerHTML = `
+          <div class="flex-grow">
+            <h2 class="text-xl font-bold text-gray-900 mb-2">${uni.name}</h2>
+            <p class="text-gray-600 mb-4">${location}</p>
+          </div>
+          ${websites}
+        `;
+        universitiesGrid.appendChild(uniCard);
+      });
+    }
+
+    function displayMessage(text) {
+      universitiesGrid.innerHTML = '';
+      message.innerHTML = `<p>${text}</p>`;
+      message.classList.remove('hidden');
+    }
+
+    function resetUI() {
+      universitiesGrid.innerHTML = '';
+      message.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
