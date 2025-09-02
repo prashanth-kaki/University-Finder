@@ -60,7 +60,8 @@
     const message = document.getElementById('message');
     const universitiesGrid = document.getElementById('universitiesGrid');
 
-    const PROXY_URL = 'https://api.allorigins.win/get?url='; // reliable CORS proxy
+    // AllOrigins proxy
+    const PROXY_URL = 'https://api.allorigins.win/get?url=';
     const API_BASE_URL = 'http://universities.hipolabs.com/search?country=';
 
     searchButton.addEventListener('click', fetchUniversities);
@@ -87,8 +88,8 @@
 
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
-        const textData = await response.json();
-        const data = JSON.parse(textData.contents);
+        const wrapped = await response.json();
+        const data = JSON.parse(wrapped.contents); // unwrap from allorigins
 
         if (data.length === 0) {
           displayMessage(`No universities found for "${country}". Please check the spelling.`);
