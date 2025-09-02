@@ -62,7 +62,8 @@
 
     // AllOrigins proxy
     const PROXY_URL = 'https://api.allorigins.win/get?url=';
-    const API_BASE_URL = 'http://universities.hipolabs.com/search?country=';
+    // Updated to use HTTPS:
+    const API_BASE_URL = 'https://universities.hipolabs.com/search?country=';
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
