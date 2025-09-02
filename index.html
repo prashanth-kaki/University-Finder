@@ -11,11 +11,11 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     .spinner {
-      border: 4px solid rgba(0, 0, 0, 0.1);
+      border: 4px solid rgba(0,0,0,0.1);
       width: 36px; height: 36px;
       border-radius: 50%;
       border-left-color: #09f;
-      animation: spin 1s ease infinite;
+      animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
   </style>
@@ -60,7 +60,8 @@
     const message = document.getElementById('message');
     const universitiesGrid = document.getElementById('universitiesGrid');
 
-    const API_URL = 'https://corsproxy.io/?http://universities.hipolabs.com/search?country=';
+    const PROXY_URL = 'https://api.allorigins.win/get?url='; // reliable CORS proxy
+    const API_BASE_URL = 'http://universities.hipolabs.com/search?country=';
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
@@ -81,13 +82,13 @@
       searchButton.classList.add('opacity-50', 'cursor-not-allowed');
 
       try {
-        const response = await fetch(`${API_URL}${encodeURIComponent(country.toLowerCase())}`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        });
+        const targetURL = `${API_BASE_URL}${encodeURIComponent(country)}`;
+        const response = await fetch(`${PROXY_URL}${encodeURIComponent(targetURL)}`);
 
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        const data = await response.json();
+
+        const textData = await response.json();
+        const data = JSON.parse(textData.contents);
 
         if (data.length === 0) {
           displayMessage(`No universities found for "${country}". Please check the spelling.`);
