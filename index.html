@@ -60,7 +60,7 @@
     const message = document.getElementById('message');
     const universitiesGrid = document.getElementById('universitiesGrid');
 
-    const API_URL = 'http://universities.hipolabs.com/search?country=';
+    const API_URL = 'https://corsproxy.io/?http://universities.hipolabs.com/search?country=';
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
