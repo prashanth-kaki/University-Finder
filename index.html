@@ -32,7 +32,7 @@
     <!-- Search -->
     <div class="mb-8 p-6 bg-white rounded-xl shadow-md">
       <div class="flex flex-col sm:flex-row gap-4">
-        <input type="text" id="countryInput" placeholder="Enter a country name (e.g., India)" 
+        <input type="text" id="countryInput" placeholder="Enter a country name (e.g., India, United States, Canada)" 
                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
         <button id="searchButton" 
                 class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 shadow">
@@ -60,10 +60,52 @@
     const message = document.getElementById('message');
     const universitiesGrid = document.getElementById('universitiesGrid');
 
-    // AllOrigins proxy
-    const PROXY_URL = 'https://api.allorigins.win/get?url=';
-    // Updated to use HTTPS:
-    const API_BASE_URL = 'https://universities.hipolabs.com/search?country=';
+    // Local university database
+    const UNIVERSITY_DATA = {
+      "india": [
+        { "name": "Indian Institute of Technology Delhi", "country": "India", "state-province": "Delhi", "web_pages": ["http://www.iitd.ac.in/"] },
+        { "name": "Indian Institute of Technology Bombay", "country": "India", "state-province": "Maharashtra", "web_pages": ["http://www.iitb.ac.in/"] },
+        { "name": "Indian Institute of Science", "country": "India", "state-province": "Karnataka", "web_pages": ["http://www.iisc.ac.in/"] },
+        { "name": "University of Delhi", "country": "India", "state-province": "Delhi", "web_pages": ["http://www.du.ac.in/"] },
+        { "name": "Jawaharlal Nehru University", "country": "India", "state-province": "Delhi", "web_pages": ["http://www.jnu.ac.in/"] },
+        { "name": "Indian Institute of Technology Madras", "country": "India", "state-province": "Tamil Nadu", "web_pages": ["http://www.iitm.ac.in/"] },
+        { "name": "Indian Institute of Technology Kanpur", "country": "India", "state-province": "Uttar Pradesh", "web_pages": ["http://www.iitk.ac.in/"] },
+        { "name": "Indian Institute of Technology Kharagpur", "country": "India", "state-province": "West Bengal", "web_pages": ["http://www.iitkgp.ac.in/"] }
+      ],
+      "united states": [
+        { "name": "Harvard University", "country": "United States", "state-province": "Massachusetts", "web_pages": ["http://www.harvard.edu/"] },
+        { "name": "Stanford University", "country": "United States", "state-province": "California", "web_pages": ["http://www.stanford.edu/"] },
+        { "name": "Massachusetts Institute of Technology", "country": "United States", "state-province": "Massachusetts", "web_pages": ["http://www.mit.edu/"] },
+        { "name": "University of California, Berkeley", "country": "United States", "state-province": "California", "web_pages": ["http://www.berkeley.edu/"] },
+        { "name": "Yale University", "country": "United States", "state-province": "Connecticut", "web_pages": ["http://www.yale.edu/"] },
+        { "name": "Princeton University", "country": "United States", "state-province": "New Jersey", "web_pages": ["http://www.princeton.edu/"] }
+      ],
+      "united kingdom": [
+        { "name": "University of Oxford", "country": "United Kingdom", "state-province": "England", "web_pages": ["http://www.ox.ac.uk/"] },
+        { "name": "University of Cambridge", "country": "United Kingdom", "state-province": "England", "web_pages": ["http://www.cam.ac.uk/"] },
+        { "name": "Imperial College London", "country": "United Kingdom", "state-province": "England", "web_pages": ["http://www.imperial.ac.uk/"] },
+        { "name": "University College London", "country": "United Kingdom", "state-province": "England", "web_pages": ["http://www.ucl.ac.uk/"] },
+        { "name": "London School of Economics", "country": "United Kingdom", "state-province": "England", "web_pages": ["http://www.lse.ac.uk/"] }
+      ],
+      "canada": [
+        { "name": "University of Toronto", "country": "Canada", "state-province": "Ontario", "web_pages": ["http://www.utoronto.ca/"] },
+        { "name": "McGill University", "country": "Canada", "state-province": "Quebec", "web_pages": ["http://www.mcgill.ca/"] },
+        { "name": "University of British Columbia", "country": "Canada", "state-province": "British Columbia", "web_pages": ["http://www.ubc.ca/"] },
+        { "name": "University of Waterloo", "country": "Canada", "state-province": "Ontario", "web_pages": ["http://www.uwaterloo.ca/"] }
+      ],
+      "australia": [
+        { "name": "University of Melbourne", "country": "Australia", "state-province": "Victoria", "web_pages": ["http://www.unimelb.edu.au/"] },
+        { "name": "Australian National University", "country": "Australia", "state-province": "Australian Capital Territory", "web_pages": ["http://www.anu.edu.au/"] },
+        { "name": "University of Sydney", "country": "Australia", "state-province": "New South Wales", "web_pages": ["http://www.sydney.edu.au/"] },
+        { "name": "University of Queensland", "country": "Australia", "state-province": "Queensland", "web_pages": ["http://www.uq.edu.au/"] }
+      ],
+      "germany": [
+        { "name": "Technical University of Munich", "country": "Germany", "state-province": "Bavaria", "web_pages": ["http://www.tum.de/"] },
+        { "name": "Heidelberg University", "country": "Germany", "state-province": "Baden-Württemberg", "web_pages": ["http://www.uni-heidelberg.de/"] },
+        { "name": "Humboldt University of Berlin", "country": "Germany", "state-province": "Berlin", "web_pages": ["http://www.hu-berlin.de/"] },
+        { "name": "University of Munich", "country": "Germany", "state-province": "Bavaria", "web_pages": ["http://www.lmu.de/"] }
+      ]
+    };
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
@@ -84,23 +126,21 @@
       searchButton.classList.add('opacity-50', 'cursor-not-allowed');
 
       try {
-        const targetURL = `${API_BASE_URL}${encodeURIComponent(country)}`;
-        const response = await fetch(`${PROXY_URL}${encodeURIComponent(targetURL)}`);
+        // Simulate a small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const normalizedCountry = country.toLowerCase().trim();
+        const universities = UNIVERSITY_DATA[normalizedCountry] || [];
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-        const wrapped = await response.json();
-        const data = JSON.parse(wrapped.contents); // unwrap from allorigins
-
-        if (data.length === 0) {
-          displayMessage(`No universities found for "${country}". Please check the spelling.`);
+        if (universities.length === 0) {
+          displayMessage(`No universities found for "${country}". Try searching for India, United States, United Kingdom, Canada, Australia, or Germany.`);
         } else {
-          displayUniversities(data);
+          displayUniversities(universities);
         }
 
       } catch (error) {
-        console.error("Fetch error:", error);
-        displayMessage('Failed to fetch data. Please check your connection or try again later.');
+        console.error("Search error:", error);
+        displayMessage('An error occurred while searching. Please try again.');
       } finally {
         loader.classList.add('hidden');
         searchButton.disabled = false;
