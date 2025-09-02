@@ -35,7 +35,7 @@
         <input type="text" id="countryInput" placeholder="Enter a country name (e.g., India)" 
                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
         <button id="searchButton" 
-                class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 shadow">
+                class="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 shadow-sm">
           Search
         </button>
       </div>
@@ -60,10 +60,18 @@
     const message = document.getElementById('message');
     const universitiesGrid = document.getElementById('universitiesGrid');
 
-    // AllOrigins proxy
-    const PROXY_URL = 'https://api.allorigins.win/get?url=';
-    // Updated to use HTTPS:
+    // Multiple proxy options
+    const PROXY_OPTIONS = [
+      {name: 'AllOrigins', url: 'https://api.allorigins.win/get?url='},
+      {name: 'CORS Anywhere', url: 'https://cors-anywhere.herokuapp.com/'},
+      {name: 'No Proxy', url: ''}
+    ];
+
+    // API endpoints
     const API_BASE_URL = 'https://universities.hipolabs.com/search?country=';
+    const BACKUP_API_URL = 'https://universities.hipolabs.com/search?country=';
+    
+    let currentProxyIndex = 0;
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
@@ -78,30 +86,69 @@
       }
 
       resetUI();
-      loader.classList.remove('hidden');
-      searchButton.disabled = true;
-      searchButton.textContent = 'Searching...';
-      searchButton.classList.add('opacity-50', 'cursor-not-allowed');
+      setLoadingState(true);
 
+      // Try with different proxies if needed
+      tryFetchWithProxy(country, 0);
+    }
+
+    async function tryFetchWithProxy(country, proxyIndex) {
+      if (proxyIndex >= PROXY_OPTIONS.length) {
+        displayMessage('Failed to fetch data after trying multiple methods. The service might be down. Please try again later.');
+        setLoadingState(false);
+        return;
+      }
+
+      const proxy = PROXY_OPTIONS[proxyIndex];
+      
       try {
         const targetURL = `${API_BASE_URL}${encodeURIComponent(country)}`;
-        const response = await fetch(`${PROXY_URL}${encodeURIComponent(targetURL)}`);
+        let response;
+        let data;
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-        const wrapped = await response.json();
-        const data = JSON.parse(wrapped.contents); // unwrap from allorigins
+        if (proxy.name === 'No Proxy') {
+          // Try direct access as last resort
+          response = await fetch(targetURL);
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+          data = await response.json();
+        } else {
+          // Use proxy
+          response = await fetch(`${proxy.url}${encodeURIComponent(targetURL)}`);
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+          
+          const wrapped = await response.json();
+          
+          // Handle different proxy response formats
+          if (proxy.name === 'AllOrigins') {
+            data = JSON.parse(wrapped.contents);
+          } else {
+            data = wrapped;
+          }
+        }
 
         if (data.length === 0) {
           displayMessage(`No universities found for "${country}". Please check the spelling.`);
         } else {
           displayUniversities(data);
         }
-
+        
       } catch (error) {
-        console.error("Fetch error:", error);
-        displayMessage('Failed to fetch data. Please check your connection or try again later.');
-      } finally {
+        console.error(`Fetch error with ${proxy.name}:`, error);
+        // Try next proxy
+        tryFetchWithProxy(country, proxyIndex + 1);
+        return;
+      }
+
+      setLoadingState(false);
+    }
+
+    function setLoadingState(isLoading) {
+      if (isLoading) {
+        loader.classList.remove('hidden');
+        searchButton.disabled = true;
+        searchButton.textContent = 'Searching...';
+        searchButton.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
         loader.classList.add('hidden');
         searchButton.disabled = false;
         searchButton.textContent = 'Search';
@@ -111,11 +158,22 @@
 
     function displayUniversities(universities) {
       universitiesGrid.innerHTML = '';
+      message.classList.add('hidden');
+      
+      // Sort universities by name for better UX
+      universities.sort((a, b) => a.name.localeCompare(b.name));
+      
+      if (universities.length > 50) {
+        message.innerHTML = `<p class="text-sm bg-blue-50 p-2 rounded-lg">Found ${universities.length} universities. Showing the first 50 results.</p>`;
+        message.classList.remove('hidden');
+        universities = universities.slice(0, 50);
+      }
+      
       universities.forEach(uni => {
         const uniCard = document.createElement('div');
         uniCard.className = 'bg-white p-6 rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col';
 
-        const websites = uni.web_pages.length
+        const websites = uni.web_pages && uni.web_pages.length
           ? uni.web_pages.map(url =>
               `<a href="${url}" target="_blank" rel="noopener noreferrer"
                  class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group mb-2">
