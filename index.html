@@ -125,10 +125,18 @@
           await loadUniversityData();
           
           // Filter universities by country (case-insensitive, using pre-computed search fields)
+          // First try exact alpha code match, then country name contains
           const countryLower = country.toLowerCase();
-          const filtered = universitiesData.filter(uni => 
-            uni.searchCountry.includes(countryLower) || uni.searchAlpha === countryLower
-          );
+          const filtered = universitiesData.filter(uni => {
+            // Exact alpha code match (e.g., "US" -> United States)
+            if (uni.searchAlpha === countryLower) return true;
+            
+            // Country name contains search (e.g., "United" -> United States, United Kingdom)
+            // Only match if search term is at least 3 characters to avoid false positives
+            if (countryLower.length >= 3 && uni.searchCountry.includes(countryLower)) return true;
+            
+            return false;
+          });
 
           if (filtered.length === 0) {
             displayMessage(`No universities found for "${country}". Please check the spelling.`);
