@@ -65,7 +65,7 @@
     
     // Cache for university data
     let universitiesData = null;
-    let isLoadingData = false;
+    let dataLoadPromise = null;
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
@@ -73,24 +73,29 @@
     });
 
     async function loadUniversityData() {
-      if (universitiesData !== null || isLoadingData) {
-        return; // Already loaded or loading
+      if (universitiesData !== null) {
+        return; // Already loaded
       }
 
-      isLoadingData = true;
-      
-      try {
-        const response = await fetch(GITHUB_DATA_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        universitiesData = await response.json();
-        isLoadingData = false;
-      } catch (error) {
-        console.error('Error loading university data:', error);
-        isLoadingData = false;
-        throw error;
+      // If already loading, wait for the existing promise
+      if (dataLoadPromise !== null) {
+        return dataLoadPromise;
       }
+      
+      dataLoadPromise = (async () => {
+        try {
+          const response = await fetch(GITHUB_DATA_URL);
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          universitiesData = await response.json();
+        } catch (error) {
+          dataLoadPromise = null; // Reset so we can retry
+          throw error;
+        }
+      })();
+
+      return dataLoadPromise;
     }
 
     async function fetchUniversities() {
@@ -107,12 +112,18 @@
         // Load data if not already loaded
         await loadUniversityData();
         
+        // Check if data was loaded successfully
+        if (!universitiesData) {
+          throw new Error('Failed to load university data');
+        }
+        
         // Filter universities by country (case-insensitive)
         const countryLower = country.toLowerCase();
-        const filtered = universitiesData.filter(uni => 
-          uni.country.toLowerCase().includes(countryLower) ||
-          uni.alpha_two_code.toLowerCase() === countryLower
-        );
+        const filtered = universitiesData.filter(uni => {
+          const uniCountry = uni.country ? uni.country.toLowerCase() : '';
+          const alphaCode = uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : '';
+          return uniCountry.includes(countryLower) || alphaCode === countryLower;
+        });
 
         if (filtered.length === 0) {
           displayMessage(`No universities found for "${country}". Please check the spelling.`);
