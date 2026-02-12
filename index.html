@@ -65,6 +65,9 @@
       // GitHub raw data URL (reliable source since hipolabs API is down)
       const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json';
       
+      // Minimum search length to avoid false positives (e.g., "us" matching "Russia")
+      const MIN_SEARCH_LENGTH = 3;
+      
       // Cache for university data
       let universitiesData = null;
       let dataLoadPromise = null;
@@ -132,8 +135,8 @@
             if (uni.searchAlpha === countryLower) return true;
             
             // Country name contains search (e.g., "United" -> United States, United Kingdom)
-            // Only match if search term is at least 3 characters to avoid false positives
-            if (countryLower.length >= 3 && uni.searchCountry.includes(countryLower)) return true;
+            // Only match if search term is at least MIN_SEARCH_LENGTH characters to avoid false positives
+            if (countryLower.length >= MIN_SEARCH_LENGTH && uni.searchCountry.includes(countryLower)) return true;
             
             return false;
           });
