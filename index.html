@@ -69,142 +69,142 @@
       let universitiesData = null;
       let dataLoadPromise = null;
 
-    searchButton.addEventListener('click', fetchUniversities);
-    countryInput.addEventListener('keypress', (event) => {
-      if (event.key === 'Enter') fetchUniversities();
-    });
+      searchButton.addEventListener('click', fetchUniversities);
+      countryInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') fetchUniversities();
+      });
 
-    async function loadUniversityData() {
-      if (universitiesData !== null) {
-        return universitiesData; // Already loaded
-      }
+      async function loadUniversityData() {
+        if (universitiesData !== null) {
+          return universitiesData; // Already loaded
+        }
 
-      // If already loading, wait for the existing promise
-      if (dataLoadPromise !== null) {
+        // If already loading, wait for the existing promise
+        if (dataLoadPromise !== null) {
+          return dataLoadPromise;
+        }
+        
+        dataLoadPromise = (async () => {
+          try {
+            const response = await fetch(GITHUB_DATA_URL);
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            
+            // Pre-process data for efficient searching
+            universitiesData = data.map(uni => ({
+              ...uni,
+              searchCountry: uni.country ? uni.country.toLowerCase() : '',
+              searchAlpha: uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : ''
+            }));
+            
+            return universitiesData;
+          } catch (error) {
+            universitiesData = null; // Reset on error
+            dataLoadPromise = null; // Reset so we can retry
+            throw error;
+          }
+        })();
+
         return dataLoadPromise;
       }
-      
-      dataLoadPromise = (async () => {
+
+      async function fetchUniversities() {
+        const country = countryInput.value.trim();
+        if (!country) {
+          displayMessage('Please enter a country name.');
+          return;
+        }
+
+        resetUI();
+        setLoadingState(true);
+
         try {
-          const response = await fetch(GITHUB_DATA_URL);
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+          // Load data if not already loaded
+          await loadUniversityData();
+          
+          // Filter universities by country (case-insensitive, using pre-computed search fields)
+          const countryLower = country.toLowerCase();
+          const filtered = universitiesData.filter(uni => 
+            uni.searchCountry.includes(countryLower) || uni.searchAlpha === countryLower
+          );
+
+          if (filtered.length === 0) {
+            displayMessage(`No universities found for "${country}". Please check the spelling.`);
+          } else {
+            displayUniversities(filtered);
           }
-          const data = await response.json();
-          
-          // Pre-process data for efficient searching
-          universitiesData = data.map(uni => ({
-            ...uni,
-            searchCountry: uni.country ? uni.country.toLowerCase() : '',
-            searchAlpha: uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : ''
-          }));
-          
-          return universitiesData;
         } catch (error) {
-          universitiesData = null; // Reset on error
-          dataLoadPromise = null; // Reset so we can retry
-          throw error;
+          console.error('Fetch error:', error);
+          displayMessage('Failed to fetch university data. Please try again later.');
         }
-      })();
 
-      return dataLoadPromise;
-    }
-
-    async function fetchUniversities() {
-      const country = countryInput.value.trim();
-      if (!country) {
-        displayMessage('Please enter a country name.');
-        return;
+        setLoadingState(false);
       }
 
-      resetUI();
-      setLoadingState(true);
-
-      try {
-        // Load data if not already loaded
-        await loadUniversityData();
-        
-        // Filter universities by country (case-insensitive, using pre-computed search fields)
-        const countryLower = country.toLowerCase();
-        const filtered = universitiesData.filter(uni => 
-          uni.searchCountry.includes(countryLower) || uni.searchAlpha === countryLower
-        );
-
-        if (filtered.length === 0) {
-          displayMessage(`No universities found for "${country}". Please check the spelling.`);
+      function setLoadingState(isLoading) {
+        if (isLoading) {
+          loader.classList.remove('hidden');
+          searchButton.disabled = true;
+          searchButton.textContent = 'Searching...';
+          searchButton.classList.add('opacity-50', 'cursor-not-allowed');
         } else {
-          displayUniversities(filtered);
+          loader.classList.add('hidden');
+          searchButton.disabled = false;
+          searchButton.textContent = 'Search';
+          searchButton.classList.remove('opacity-50', 'cursor-not-allowed');
         }
-      } catch (error) {
-        console.error('Fetch error:', error);
-        displayMessage('Failed to fetch university data. Please try again later.');
       }
 
-      setLoadingState(false);
-    }
+      function displayUniversities(universities) {
+        universitiesGrid.innerHTML = '';
+        message.classList.add('hidden');
+        
+        // Sort universities by name for better UX
+        universities.sort((a, b) => a.name.localeCompare(b.name));
+        
+        if (universities.length > 50) {
+          message.innerHTML = `<p class="text-sm bg-blue-50 p-2 rounded-lg">Found ${universities.length} universities. Showing the first 50 results.</p>`;
+          message.classList.remove('hidden');
+          universities = universities.slice(0, 50);
+        }
+        
+        universities.forEach(uni => {
+          const uniCard = document.createElement('div');
+          uniCard.className = 'bg-white p-6 rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col';
 
-    function setLoadingState(isLoading) {
-      if (isLoading) {
-        loader.classList.remove('hidden');
-        searchButton.disabled = true;
-        searchButton.textContent = 'Searching...';
-        searchButton.classList.add('opacity-50', 'cursor-not-allowed');
-      } else {
-        loader.classList.add('hidden');
-        searchButton.disabled = false;
-        searchButton.textContent = 'Search';
-        searchButton.classList.remove('opacity-50', 'cursor-not-allowed');
+          const websites = uni.web_pages && uni.web_pages.length
+            ? uni.web_pages.map(url =>
+                `<a href="${url}" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group mb-2">
+                   Visit Website →
+                 </a>`).join('')
+            : `<p class="text-gray-400">No website listed</p>`;
+
+          const location = `${uni.country}${uni["state-province"] ? `, ${uni["state-province"]}` : ""}`;
+
+          uniCard.innerHTML = `
+            <div class="flex-grow">
+              <h2 class="text-xl font-bold text-gray-900 mb-2">${uni.name}</h2>
+              <p class="text-gray-600 mb-4">${location}</p>
+            </div>
+            ${websites}
+          `;
+          universitiesGrid.appendChild(uniCard);
+        });
       }
-    }
 
-    function displayUniversities(universities) {
-      universitiesGrid.innerHTML = '';
-      message.classList.add('hidden');
-      
-      // Sort universities by name for better UX
-      universities.sort((a, b) => a.name.localeCompare(b.name));
-      
-      if (universities.length > 50) {
-        message.innerHTML = `<p class="text-sm bg-blue-50 p-2 rounded-lg">Found ${universities.length} universities. Showing the first 50 results.</p>`;
+      function displayMessage(text) {
+        universitiesGrid.innerHTML = '';
+        message.innerHTML = `<p>${text}</p>`;
         message.classList.remove('hidden');
-        universities = universities.slice(0, 50);
       }
-      
-      universities.forEach(uni => {
-        const uniCard = document.createElement('div');
-        uniCard.className = 'bg-white p-6 rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col';
 
-        const websites = uni.web_pages && uni.web_pages.length
-          ? uni.web_pages.map(url =>
-              `<a href="${url}" target="_blank" rel="noopener noreferrer"
-                 class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium group mb-2">
-                 Visit Website →
-               </a>`).join('')
-          : `<p class="text-gray-400">No website listed</p>`;
-
-        const location = `${uni.country}${uni["state-province"] ? `, ${uni["state-province"]}` : ""}`;
-
-        uniCard.innerHTML = `
-          <div class="flex-grow">
-            <h2 class="text-xl font-bold text-gray-900 mb-2">${uni.name}</h2>
-            <p class="text-gray-600 mb-4">${location}</p>
-          </div>
-          ${websites}
-        `;
-        universitiesGrid.appendChild(uniCard);
-      });
-    }
-
-    function displayMessage(text) {
-      universitiesGrid.innerHTML = '';
-      message.innerHTML = `<p>${text}</p>`;
-      message.classList.remove('hidden');
-    }
-
-    function resetUI() {
-      universitiesGrid.innerHTML = '';
-      message.classList.add('hidden');
-    }
+      function resetUI() {
+        universitiesGrid.innerHTML = '';
+        message.classList.add('hidden');
+      }
     })(); // End of IIFE
   </script>
 </body>
