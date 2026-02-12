@@ -99,6 +99,7 @@
           
           return universitiesData;
         } catch (error) {
+          universitiesData = null; // Reset on error
           dataLoadPromise = null; // Reset so we can retry
           throw error;
         }
