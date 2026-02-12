@@ -74,7 +74,7 @@
 
     async function loadUniversityData() {
       if (universitiesData !== null) {
-        return; // Already loaded
+        return universitiesData; // Already loaded
       }
 
       // If already loading, wait for the existing promise
@@ -88,7 +88,16 @@
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          universitiesData = await response.json();
+          const data = await response.json();
+          
+          // Pre-process data for efficient searching
+          universitiesData = data.map(uni => ({
+            ...uni,
+            _searchCountry: uni.country ? uni.country.toLowerCase() : '',
+            _searchAlpha: uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : ''
+          }));
+          
+          return universitiesData;
         } catch (error) {
           dataLoadPromise = null; // Reset so we can retry
           throw error;
@@ -117,13 +126,11 @@
           throw new Error('Failed to load university data');
         }
         
-        // Filter universities by country (case-insensitive)
+        // Filter universities by country (case-insensitive, using pre-computed search fields)
         const countryLower = country.toLowerCase();
-        const filtered = universitiesData.filter(uni => {
-          const uniCountry = uni.country ? uni.country.toLowerCase() : '';
-          const alphaCode = uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : '';
-          return uniCountry.includes(countryLower) || alphaCode === countryLower;
-        });
+        const filtered = universitiesData.filter(uni => 
+          uni._searchCountry.includes(countryLower) || uni._searchAlpha === countryLower
+        );
 
         if (filtered.length === 0) {
           displayMessage(`No universities found for "${country}". Please check the spelling.`);
