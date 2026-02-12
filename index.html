@@ -54,18 +54,20 @@
   </div>
 
   <script>
-    const countryInput = document.getElementById('countryInput');
-    const searchButton = document.getElementById('searchButton');
-    const loader = document.getElementById('loader');
-    const message = document.getElementById('message');
-    const universitiesGrid = document.getElementById('universitiesGrid');
+    // Encapsulate to avoid global scope pollution
+    (function() {
+      const countryInput = document.getElementById('countryInput');
+      const searchButton = document.getElementById('searchButton');
+      const loader = document.getElementById('loader');
+      const message = document.getElementById('message');
+      const universitiesGrid = document.getElementById('universitiesGrid');
 
-    // GitHub raw data URL (reliable source since hipolabs API is down)
-    const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json';
-    
-    // Cache for university data
-    let universitiesData = null;
-    let dataLoadPromise = null;
+      // GitHub raw data URL (reliable source since hipolabs API is down)
+      const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/Hipo/university-domains-list/master/world_universities_and_domains.json';
+      
+      // Cache for university data
+      let universitiesData = null;
+      let dataLoadPromise = null;
 
     searchButton.addEventListener('click', fetchUniversities);
     countryInput.addEventListener('keypress', (event) => {
@@ -93,8 +95,8 @@
           // Pre-process data for efficient searching
           universitiesData = data.map(uni => ({
             ...uni,
-            _searchCountry: uni.country ? uni.country.toLowerCase() : '',
-            _searchAlpha: uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : ''
+            searchCountry: uni.country ? uni.country.toLowerCase() : '',
+            searchAlpha: uni.alpha_two_code ? uni.alpha_two_code.toLowerCase() : ''
           }));
           
           return universitiesData;
@@ -122,15 +124,10 @@
         // Load data if not already loaded
         await loadUniversityData();
         
-        // Check if data was loaded successfully
-        if (!universitiesData) {
-          throw new Error('Failed to load university data');
-        }
-        
         // Filter universities by country (case-insensitive, using pre-computed search fields)
         const countryLower = country.toLowerCase();
         const filtered = universitiesData.filter(uni => 
-          uni._searchCountry.includes(countryLower) || uni._searchAlpha === countryLower
+          uni.searchCountry.includes(countryLower) || uni.searchAlpha === countryLower
         );
 
         if (filtered.length === 0) {
@@ -208,6 +205,7 @@
       universitiesGrid.innerHTML = '';
       message.classList.add('hidden');
     }
+    })(); // End of IIFE
   </script>
 </body>
 </html>
